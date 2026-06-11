@@ -1,0 +1,9 @@
+node_modules
+dist
+.codex
+AGENTS.md
+info.txt
+.DS_Store
+*.local
+.env
+.env.*
