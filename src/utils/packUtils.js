@@ -78,6 +78,7 @@ export function mapFirebaseError(error) {
   if (code.includes('auth/popup-closed-by-user')) return 'Cerraste la ventana de Google antes de terminar.'
   if (code.includes('auth/popup-blocked')) return 'El navegador bloqueo la ventana de Google.'
   if (code.includes('auth/unauthorized-domain')) return 'Este dominio no esta autorizado en Firebase Auth. Agregalo en Authentication > Settings > Authorized domains.'
+  if (code.includes('auth/operation-not-allowed')) return 'El acceso con Google no esta habilitado en Firebase Auth. Activarlo en Authentication > Sign-in method > Google.'
   if (code.includes('auth/account-exists-with-different-credential')) return 'Ese email ya esta asociado a otro metodo de acceso.'
 
   if (code.includes('auth/invalid-credential')) return 'No se pudo validar la cuenta de Google.'

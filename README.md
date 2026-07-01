@@ -13,7 +13,7 @@ App React + Vite para vender packs de cortes con transferencia manual, panel de 
 ## Configuracion Firebase
 
 1. Crear un proyecto en Firebase.
-2. Activar Authentication con proveedor Google.
+2. Activar Authentication con proveedor Google en Authentication > Sign-in method > Google. Elegir un email de soporte y guardar.
 3. Crear Cloud Firestore.
 4. Copiar `.env.example` como `.env.local` y completar:
 
