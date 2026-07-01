@@ -3,7 +3,6 @@ import {
   collection,
   doc,
   onSnapshot,
-  orderBy,
   query,
   runTransaction,
   serverTimestamp,
@@ -22,6 +21,14 @@ function usageLogsCollection() {
   return collection(db, 'packUsageLogs')
 }
 
+function toMillis(value) {
+  return value?.toMillis?.() || value?.seconds * 1000 || 0
+}
+
+function sortNewestFirst(items) {
+  return [...items].sort((first, second) => toMillis(second.createdAt) - toMillis(first.createdAt))
+}
+
 export function listenUserVisits(userId, callback) {
   if (!isFirebaseConfigured || !db || !userId) {
     callback([])
@@ -31,11 +38,10 @@ export function listenUserVisits(userId, callback) {
   const q = query(
     visitRequestsCollection(),
     where('userId', '==', userId),
-    orderBy('createdAt', 'desc'),
   )
 
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })))
+    callback(sortNewestFirst(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))))
   })
 }
 
@@ -45,9 +51,9 @@ export function listenAllVisits(callback) {
     return () => {}
   }
 
-  const q = query(visitRequestsCollection(), orderBy('createdAt', 'desc'))
+  const q = query(visitRequestsCollection())
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })))
+    callback(sortNewestFirst(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))))
   })
 }
 

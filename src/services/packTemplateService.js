@@ -3,7 +3,6 @@ import {
   collection,
   doc,
   onSnapshot,
-  orderBy,
   query,
   serverTimestamp,
   updateDoc,
@@ -42,6 +41,14 @@ function templatesCollection() {
   return collection(db, 'packTemplates')
 }
 
+function toMillis(value) {
+  return value?.toMillis?.() || value?.seconds * 1000 || 0
+}
+
+function sortNewestFirst(items) {
+  return [...items].sort((first, second) => toMillis(second.createdAt) - toMillis(first.createdAt))
+}
+
 export function listenActivePackTemplates(callback) {
   if (!isFirebaseConfigured || !db) {
     callback(demoTemplates)
@@ -51,11 +58,10 @@ export function listenActivePackTemplates(callback) {
   const q = query(
     templatesCollection(),
     where('isActive', '==', true),
-    orderBy('createdAt', 'desc'),
   )
 
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })))
+    callback(sortNewestFirst(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))))
   })
 }
 
@@ -65,9 +71,9 @@ export function listenAllPackTemplates(callback) {
     return () => {}
   }
 
-  const q = query(templatesCollection(), orderBy('createdAt', 'desc'))
+  const q = query(templatesCollection())
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })))
+    callback(sortNewestFirst(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))))
   })
 }
 

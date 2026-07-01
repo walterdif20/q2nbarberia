@@ -4,7 +4,6 @@ import {
   collection,
   doc,
   onSnapshot,
-  orderBy,
   query,
   runTransaction,
   serverTimestamp,
@@ -24,6 +23,14 @@ function logsCollection() {
   return collection(db, 'packUsageLogs')
 }
 
+function toMillis(value) {
+  return value?.toMillis?.() || value?.seconds * 1000 || 0
+}
+
+function sortNewestFirst(items) {
+  return [...items].sort((first, second) => toMillis(second.createdAt) - toMillis(first.createdAt))
+}
+
 function withEffectiveStatus(pack) {
   return {
     ...pack,
@@ -40,11 +47,10 @@ export function listenUserPacks(userId, callback) {
   const q = query(
     userPacksCollection(),
     where('userId', '==', userId),
-    orderBy('createdAt', 'desc'),
   )
 
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map((item) => withEffectiveStatus({ id: item.id, ...item.data() })))
+    callback(sortNewestFirst(snapshot.docs.map((item) => withEffectiveStatus({ id: item.id, ...item.data() }))))
   })
 }
 
@@ -54,9 +60,9 @@ export function listenAllUserPacks(callback) {
     return () => {}
   }
 
-  const q = query(userPacksCollection(), orderBy('createdAt', 'desc'))
+  const q = query(userPacksCollection())
   return onSnapshot(q, (snapshot) => {
-    callback(snapshot.docs.map((item) => withEffectiveStatus({ id: item.id, ...item.data() })))
+    callback(sortNewestFirst(snapshot.docs.map((item) => withEffectiveStatus({ id: item.id, ...item.data() }))))
   })
 }
 
