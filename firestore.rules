@@ -1,0 +1,221 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userDoc(request.auth.uid).data.role == 'admin';
+    }
+
+    function onlyChanged(allowedFields) {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly(allowedFields);
+    }
+
+    function packTemplateExists(templateId) {
+      return exists(/databases/$(database)/documents/packTemplates/$(templateId));
+    }
+
+    function packTemplate(templateId) {
+      return get(/databases/$(database)/documents/packTemplates/$(templateId));
+    }
+
+    function userPackExists(userPackId) {
+      return exists(/databases/$(database)/documents/userPacks/$(userPackId));
+    }
+
+    function userPack(userPackId) {
+      return get(/databases/$(database)/documents/userPacks/$(userPackId));
+    }
+
+    function validUserPackCreate() {
+      return request.resource.data.keys().hasOnly([
+          'approvedAt',
+          'approvedBy',
+          'createdAt',
+          'disabledAt',
+          'disabledBy',
+          'disabledReason',
+          'expiresAt',
+          'initialCuts',
+          'internalPaymentStatus',
+          'operationalStatus',
+          'packName',
+          'packPrice',
+          'packTemplateId',
+          'paymentAlias',
+          'purchasedAt',
+          'rejectedAt',
+          'rejectedBy',
+          'rejectedReason',
+          'remainingCuts',
+          'regularPrice',
+          'savingsAmount',
+          'savingsPercentage',
+          'updatedAt',
+          'userEmail',
+          'userId',
+          'userName',
+          'validityDays'
+        ])
+        && request.resource.data.packTemplateId is string
+        && packTemplateExists(request.resource.data.packTemplateId)
+        && packTemplate(request.resource.data.packTemplateId).data.isActive == true
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userEmail == request.auth.token.email
+        && request.resource.data.internalPaymentStatus == 'pending'
+        && request.resource.data.operationalStatus == 'active'
+        && request.resource.data.approvedAt == null
+        && request.resource.data.approvedBy == null
+        && request.resource.data.disabledAt == null
+        && request.resource.data.disabledBy == null
+        && request.resource.data.disabledReason == null
+        && request.resource.data.rejectedAt == null
+        && request.resource.data.rejectedBy == null
+        && request.resource.data.rejectedReason == null
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.purchasedAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.initialCuts == packTemplate(request.resource.data.packTemplateId).data.cutsQuantity
+        && request.resource.data.remainingCuts == packTemplate(request.resource.data.packTemplateId).data.cutsQuantity
+        && request.resource.data.packName == packTemplate(request.resource.data.packTemplateId).data.name
+        && request.resource.data.packPrice == packTemplate(request.resource.data.packTemplateId).data.packPrice
+        && request.resource.data.regularPrice == packTemplate(request.resource.data.packTemplateId).data.regularPrice
+        && request.resource.data.validityDays == packTemplate(request.resource.data.packTemplateId).data.validityDays
+        && request.resource.data.remainingCuts > 0;
+    }
+
+    function validVisitCreate() {
+      return request.resource.data.keys().hasOnly([
+          'cancelledAt',
+          'cancelledBy',
+          'confirmedAt',
+          'confirmedBy',
+          'createdAt',
+          'packName',
+          'requestedDate',
+          'requestedTime',
+          'status',
+          'updatedAt',
+          'userEmail',
+          'userId',
+          'userName',
+          'userPackId'
+        ])
+        && request.resource.data.userPackId is string
+        && userPackExists(request.resource.data.userPackId)
+        && userPack(request.resource.data.userPackId).data.userId == request.auth.uid
+        && userPack(request.resource.data.userPackId).data.operationalStatus == 'active'
+        && userPack(request.resource.data.userPackId).data.remainingCuts > 0
+        && userPack(request.resource.data.userPackId).data.expiresAt > request.time
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userEmail == request.auth.token.email
+        && request.resource.data.packName == userPack(request.resource.data.userPackId).data.packName
+        && request.resource.data.status == 'pending'
+        && request.resource.data.cancelledAt == null
+        && request.resource.data.cancelledBy == null
+        && request.resource.data.confirmedAt == null
+        && request.resource.data.confirmedBy == null
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.requestedDate is string
+        && request.resource.data.requestedTime is string;
+    }
+
+    function validUserLogCreate() {
+      return request.resource.data.keys().hasOnly([
+          'action',
+          'createdAt',
+          'createdBy',
+          'newRemainingCuts',
+          'previousRemainingCuts',
+          'userId',
+          'userPackId',
+          'visitRequestId'
+        ])
+        && request.resource.data.action in ['pack_created', 'payment_marked_by_user']
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userPackId is string
+        && userPackExists(request.resource.data.userPackId)
+        && userPack(request.resource.data.userPackId).data.userId == request.auth.uid;
+    }
+
+    match /users/{uid} {
+      allow create: if isSelf(uid)
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && request.resource.data.keys().hasOnly(['createdAt', 'displayName', 'email', 'lastLoginAt', 'photoURL', 'role', 'updatedAt'])
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.lastLoginAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == 'user';
+      allow read: if isSelf(uid) || isAdmin();
+      allow update: if isSelf(uid)
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role == resource.data.role
+        && onlyChanged(['displayName', 'lastLoginAt', 'photoURL', 'updatedAt']);
+      allow update, delete: if isAdmin();
+    }
+
+    match /barberSettings/{settingId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /packTemplates/{packTemplateId} {
+      allow read: if signedIn()
+        && (resource.data.isActive == true || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /userPacks/{userPackId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+
+      allow create: if signedIn()
+        && validUserPackCreate();
+
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && onlyChanged(['updatedAt'])
+        && request.resource.data.internalPaymentStatus == resource.data.internalPaymentStatus
+        && request.resource.data.operationalStatus == resource.data.operationalStatus
+        && request.resource.data.remainingCuts == resource.data.remainingCuts;
+
+      allow update, delete: if isAdmin();
+    }
+
+    match /visitRequests/{visitRequestId} {
+      allow create: if signedIn()
+        && validVisitCreate();
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /packUsageLogs/{logId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin()
+        || (signedIn() && validUserLogCreate());
+      allow update, delete: if false;
+    }
+  }
+}
