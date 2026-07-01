@@ -34,6 +34,12 @@ firebase login
 firebase use --add
 ```
 
+6. En Authentication > Settings > Authorized domains agregar:
+
+- `localhost`
+- `127.0.0.1`
+- `walterdif20.github.io`
+
 ## Desarrollo
 
 ```bash
