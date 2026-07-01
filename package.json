@@ -6,7 +6,7 @@
   "homepage": "https://walterdif20.github.io/q2nbarberia",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/create-gh-pages-404.mjs",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
